@@ -19,6 +19,14 @@ Tap anywhere to throw. On a keyboard, use Space, Enter or the Up arrow.
 - Stages get harder: more knives, knives already stuck in the target, and spin
   that speeds up, swings back and forth, or stops and starts
 - Every 5th stage is a boss with a darker target and nastier spin, worth +5
-- 8 knives to unlock by reaching stages 2, 4, 6, 8, 10, 15 and 20
+- 8 knives, each with its own ability, unlocked by reaching a stage:
+  - **classic**: no tricks
+  - **needle** (stage 2): half-width blade, fits into tighter gaps
+  - **frost** (stage 4): the target spins 25% slower
+  - **lucky** (stage 6): 2 points per hit, but the target spins 15% faster
+  - **bullet** (stage 8): flies 60% faster, so timing is easier
+  - **guardian** (stage 10): survives 1 crash per run
+  - **scope** (stage 15): a dashed line shows if the throw will hit (red = crash)
+  - **golden** (stage 20): 2 points per hit and survives 1 crash
 - Hit, crash and break sounds, plus vibration on phones
 - Best score, best stage, chosen knife and mute are remembered

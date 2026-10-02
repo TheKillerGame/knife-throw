@@ -65,7 +65,13 @@ button:focus-visible{outline:3px solid var(--coral);outline-offset:3px;}
 .skin svg{width:44%;height:auto;}
 .skin.sel{border-color:var(--ink);background:#fff;}
 .skin.locked svg{opacity:.18;}
-.skin .lock{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:var(--soft);}
+.skin .lock{position:absolute;bottom:7px;left:0;right:0;text-align:center;font-size:12px;color:var(--soft);}
+.skin svg{margin-bottom:12px;}
+.skin.sel .lock{color:var(--ink);}
+.info{width:100%;margin-top:18px;background:#fff;border-radius:22px;padding:16px 18px;text-align:center;}
+.info b{display:block;font-size:26px;font-weight:700;color:var(--coral);}
+.info div{font-size:16px;margin-top:2px;}
+.info span{display:block;font-size:13px;color:var(--soft);margin-top:6px;min-height:1em;}
 </style>
 </head>
 <body>
@@ -78,6 +84,7 @@ button:focus-visible{outline:3px solid var(--coral);outline-offset:3px;}
   <div class="col">
     <div class="logo">knife<br><span>throw</span></div>
     <div class="best" id="bestLine">tap to throw. don't hit a knife.</div>
+    <div class="best" id="knifeLine" style="margin-top:2px;color:var(--coral)"></div>
   </div>
   <div class="fill"></div>
   <div class="col">
@@ -105,8 +112,13 @@ button:focus-visible{outline:3px solid var(--coral);outline-offset:3px;}
 <div class="screen" id="skins">
   <div class="col">
     <h2>knives</h2>
-    <p>reach a stage to unlock a knife</p>
+    <p>every knife has its own ability</p>
     <div class="grid" id="grid"></div>
+    <div class="info">
+      <b id="infoName">classic</b>
+      <div id="infoDesc">no tricks. pure skill.</div>
+      <span id="infoLock">equipped</span>
+    </div>
   </div>
   <div class="fill"></div>
   <div class="col"><button type="button" onclick="goMenu()">back</button></div>
@@ -131,16 +143,21 @@ const store={
 let best=store.get('best',0), bestStage=store.get('bestStage',0), skinIdx=store.get('skin',0), muted=store.get('mute',false);
 
 /* knife skins: handle + blade colour, unlocked by best stage reached */
+/* every knife has a real ability, most with a catch:
+   wf = knife width (thinner fits tighter gaps), spin = target speed,
+   fly = throw speed, pts = points per hit, saves = crashes survived per run,
+   aim = shows whether the throw will land */
 const SKINS=[
-  {h:'#3d2c4f',b:'#ffffff',at:0},
-  {h:'#ff6b6b',b:'#ffffff',at:2},
-  {h:'#4ecdc4',b:'#ffffff',at:4},
-  {h:'#ffb84d',b:'#ffffff',at:6},
-  {h:'#7b6cf6',b:'#ffffff',at:8},
-  {h:'#2ec27e',b:'#ffffff',at:10},
-  {h:'#ff6b6b',b:'#3d2c4f',at:15},
-  {h:'#3d2c4f',b:'#ffd166',at:20},
+  {name:'classic', h:'#3d2c4f',b:'#ffffff',at:0, desc:'no tricks. pure skill.'},
+  {name:'needle',  h:'#ff6b6b',b:'#ffffff',at:2, wf:.5,  desc:'thinner blade, fits into tighter gaps.'},
+  {name:'frost',   h:'#4ecdc4',b:'#ffffff',at:4, spin:.75, desc:'the target spins 25% slower.'},
+  {name:'lucky',   h:'#ffb84d',b:'#ffffff',at:6, pts:2,spin:1.15, desc:'2 points per hit, but the target spins 15% faster.'},
+  {name:'bullet',  h:'#7b6cf6',b:'#ffffff',at:8, fly:1.6, desc:'flies 60% faster, so your timing is easier.'},
+  {name:'guardian',h:'#2ec27e',b:'#ffffff',at:10,saves:1, desc:'survives 1 crash per run.'},
+  {name:'scope',   h:'#ff6b6b',b:'#3d2c4f',at:15,aim:true, desc:'shows if your throw will hit before you let go.'},
+  {name:'golden',  h:'#3d2c4f',b:'#ffd166',at:20,pts:2,saves:1, desc:'2 points per hit and survives 1 crash.'},
 ];
+const perk=()=>SKINS[skinIdx]||SKINS[0];
 if(!SKINS[skinIdx]||SKINS[skinIdx].at>bestStage)skinIdx=0;
 
 const C={ink:'#3d2c4f',coral:'#ff6b6b',bg:'#ffe9d6',soft:'#9a8a8a',pale:'#e8cbb6'};
@@ -203,7 +220,7 @@ function newStage(){
   mode='play';
 }
 function spinSpeed(t){
-  const b=G.base;
+  const b=G.base*(perk().spin||1);
   switch(G.pattern){
     case 1:return b*(0.55+0.9*Math.abs(Math.sin(t*1.1)));
     case 2:return b*1.25*Math.sin(t*1.3);
@@ -215,7 +232,7 @@ function spinSpeed(t){
 
 function startGame(){
   audio();
-  G.stage=1;G.score=0;G.pieces=[];G.chips=[];G.shake=0;G.flash=0;
+  G.stage=1;G.score=0;G.pieces=[];G.chips=[];G.shake=0;G.flash=0;G.saves=perk().saves||0;
   show(null);
   newStage();
 }
@@ -241,14 +258,30 @@ window.addEventListener('keydown',e=>{
 function land(){
   const g=geo();
   const a=norm(90-G.theta);                      // where the bottom of the target is, in target space
-  const thr=(g.w/g.R)*180/Math.PI*1.1;           // how close two knives can sit
-  if(G.stuck.some(k=>angDist(k.a,a)<thr)){fail();return;}
-  G.stuck.push({a,kind:'knife'});
+  if(blocked(a)){
+    if(G.saves>0){saved();return;}
+    fail();return;
+  }
+  G.stuck.push({a,kind:'knife',wf:perk().wf||1,skin:skinIdx});
   G.flying=null;
-  G.score++;
+  G.score+=perk().pts||1;
   G.shake=Math.max(G.shake,.09);
   for(let i=0;i<5;i++)G.chips.push({x:g.cx+(Math.random()-.5)*g.w,y:g.cy+g.R,vx:(Math.random()-.5)*260,vy:Math.random()*-60+80,life:.45,c:Math.random()<.5?RINGS[0]:RINGS[1]});
   buzz(8);sfx.thunk();
+  if(G.ammo===0)clearStage();
+}
+/* would a knife landing at target-space angle a hit one already there? */
+function blocked(a){
+  const g=geo(), mine=perk().wf||1;
+  return G.stuck.some(k=>angDist(k.a,a)<((mine+(k.wf||1))/2)*(g.w/g.R)*180/Math.PI*1.1);
+}
+/* guardian / golden: the knife bounces off but the run goes on */
+function saved(){
+  const g=geo();
+  G.saves--;
+  G.pieces.push({type:'knife',x:g.cx,y:g.cy+g.R,vx:(Math.random()<.5?-1:1)*(160+Math.random()*160),vy:260,rot:0,vr:(Math.random()<.5?-1:1)*14,skin:skinIdx,wf:perk().wf||1});
+  G.flying=null;G.shake=.25;G.saveFlash=.6;
+  buzz([30,30]);sfx.clank();
   if(G.ammo===0)clearStage();
 }
 function fail(){
@@ -272,7 +305,7 @@ function clearStage(){
     const ang=rad(k.a+G.theta);
     G.pieces.push({type:'knife',x:g.cx+Math.cos(ang)*g.R*.72,y:g.cy+Math.sin(ang)*g.R*.72,
       vx:Math.cos(ang)*(200+Math.random()*150),vy:Math.sin(ang)*(200+Math.random()*150)-200,
-      rot:ang-Math.PI/2,vr:(Math.random()-.5)*16,skin:k.kind==='pre'?-1:skinIdx});
+      rot:ang-Math.PI/2,vr:(Math.random()-.5)*16,skin:k.kind==='pre'?-1:(k.skin??skinIdx),wf:k.wf||1});
   });
   G.stuck=[];
   if(G.boss)G.score+=5;
@@ -300,7 +333,7 @@ function update(dt){
   if(G.intro>0)G.intro=Math.max(0,G.intro-dt);
   if(G.flying&&mode==='play'){
     const g=geo();
-    G.flying.y-=2600*dt;
+    G.flying.y-=2600*(perk().fly||1)*dt;
     if(G.flying.y<=g.cy+g.R)land();
   }
   if(mode==='dying'){G.timer-=dt;if(G.timer<=0)gameOver();}
@@ -311,9 +344,17 @@ function update(dt){
   G.chips=G.chips.filter(c=>c.life>0);
   G.shake=Math.max(0,G.shake-dt);
   G.flash=Math.max(0,G.flash-dt);
+  G.saveFlash=Math.max(0,(G.saveFlash||0)-dt);
 }
 
 /* ---- drawing ---- */
+/* where the target will be when a knife thrown right now arrives */
+function predictLanding(){
+  const g=geo(), ft=(g.throwY-(g.cy+g.R))/(2600*(perk().fly||1));
+  let th=G.theta,t=G.t;
+  for(let i=0;i<6;i++){th+=G.dir*spinSpeed(t)*ft/6;t+=ft/6;}
+  return norm(90-th);
+}
 function knifePath(L,w,skin,outline){
   /* tip at 0,0 pointing up, the knife hangs down along +y */
   const s=skin<0?{h:C.soft,b:'#fff'}:SKINS[skin]||SKINS[0];
@@ -341,7 +382,7 @@ function drawTarget(cx,cy,R,theta,boss){
 function drawStuck(list,cx,cy,R,theta,L,w){
   for(const k of list){
     const a=rad(k.a+theta);
-    drawKnife(cx+Math.cos(a)*R*.72,cy+Math.sin(a)*R*.72,a-Math.PI/2,L,w,k.kind==='pre'?-1:skinIdx);
+    drawKnife(cx+Math.cos(a)*R*.72,cy+Math.sin(a)*R*.72,a-Math.PI/2,L,w*(k.wf||1),k.kind==='pre'?-1:(k.skin??skinIdx));
   }
 }
 function drawWedge(p){
@@ -376,14 +417,24 @@ function draw(){
   }
   for(const p of G.pieces){
     if(p.type==='wedge')drawWedge(p);
-    else drawKnife(p.x,p.y,p.rot,g.L,g.w,p.skin);
+    else drawKnife(p.x,p.y,p.rot,g.L,g.w*(p.wf||1),p.skin);
   }
   for(const c of G.chips){ctx.globalAlpha=Math.min(1,c.life*3);ctx.fillStyle=c.c;ctx.beginPath();ctx.arc(c.x,c.y,3.5,0,Math.PI*2);ctx.fill();}
   ctx.globalAlpha=1;
 
   /* the knife in flight, or the next one waiting at the bottom */
-  if(G.flying)drawKnife(g.cx,G.flying.y,0,g.L,g.w,skinIdx);
-  else if(mode==='play'&&G.ammo>0)drawKnife(g.cx,g.throwY,0,g.L,g.w,skinIdx);
+  const myW=g.w*(perk().wf||1);
+  if(G.flying)drawKnife(g.cx,G.flying.y,0,g.L,myW,skinIdx);
+  else if(mode==='play'&&G.ammo>0){
+    if(perk().aim&&G.intro<=0.55){
+      /* scope: dashed line to the target, plum if the throw lands, coral if it would crash */
+      const bad=blocked(predictLanding());
+      ctx.save();ctx.setLineDash([6,8]);ctx.lineWidth=3;ctx.lineCap='round';
+      ctx.strokeStyle=bad?C.coral:'rgba(61,44,79,.45)';
+      ctx.beginPath();ctx.moveTo(g.cx,g.throwY-10);ctx.lineTo(g.cx,g.cy+g.R+8);ctx.stroke();ctx.restore();
+    }
+    drawKnife(g.cx,g.throwY,0,g.L,myW,skinIdx);
+  }
   ctx.restore();
 
   /* ---- HUD ---- */
@@ -412,6 +463,17 @@ function draw(){
     text(G.boss?'boss fight!':'stage '+G.stage,W/2,g.cy+g.R+g.L+56,G.boss?40:34,G.boss?C.coral:C.ink,'center');
     ctx.globalAlpha=1;
   }
+  /* crashes you can still survive (guardian / golden) */
+  for(let i=0;i<(G.saves||0);i++){
+    const x=24+i*24, y=top+70;
+    ctx.fillStyle=C.coral;ctx.beginPath();
+    ctx.moveTo(x+9,y+16);ctx.bezierCurveTo(x-6,y+6,x+1,y-4,x+9,y+3);ctx.bezierCurveTo(x+17,y-4,x+24,y+6,x+9,y+16);ctx.fill();
+  }
+  if(G.saveFlash>0&&mode==='play'){
+    ctx.globalAlpha=Math.min(1,G.saveFlash*2.5);
+    text('saved!',W/2,g.cy+g.R+g.L+56,34,C.coral,'center');
+    ctx.globalAlpha=1;
+  }
   if(G.flash>0){ctx.fillStyle=`rgba(255,107,107,${G.flash*.9})`;ctx.fillRect(0,0,W,H);}
 }
 
@@ -426,12 +488,13 @@ requestAnimationFrame(frame);
 /* ---- menus ---- */
 function paintMenu(){
   $('bestLine').textContent=best>0?'best '+best+' · stage '+bestStage:"tap to throw. don't hit a knife.";
+  $('knifeLine').textContent='knife: '+perk().name;
   $('mute').textContent=muted?'\u{1F507}':'\u{1F50A}';
   $('mute').setAttribute('aria-label',muted?'Sound on':'Sound off');
 }
 function knifeSVG(s){
-  return `<svg viewBox="-14 -3 28 96" aria-hidden="true"><path d="M0 0 L8 12 L8 50 L-8 50 L-8 12 Z" fill="${s.b}" stroke="#3d2c4f" stroke-width="2.6" stroke-linejoin="round"/>`+
-    `<rect x="-12" y="50" width="24" height="6" rx="2" fill="#3d2c4f"/><rect x="-7" y="56" width="14" height="36" rx="6" fill="${s.h}"/></svg>`;
+  return `<svg viewBox="-14 -3 28 96" aria-hidden="true"><g transform="scale(${s.wf||1},1)"><path d="M0 0 L8 12 L8 50 L-8 50 L-8 12 Z" fill="${s.b}" stroke="#3d2c4f" stroke-width="2.6" stroke-linejoin="round"/>`+
+    `<rect x="-12" y="50" width="24" height="6" rx="2" fill="#3d2c4f"/><rect x="-7" y="56" width="14" height="36" rx="6" fill="${s.h}"/></g></svg>`;
 }
 function buildSkins(){
   const grid=$('grid');grid.innerHTML='';
@@ -440,11 +503,21 @@ function buildSkins(){
     const locked=s.at>bestStage;
     b.type='button';
     b.className='skin'+(i===skinIdx?' sel':'')+(locked?' locked':'');
-    b.innerHTML=knifeSVG(s)+(locked?`<span class="lock">stage ${s.at}</span>`:'');
-    b.setAttribute('aria-label',locked?`Locked, reach stage ${s.at}`:'Knife '+(i+1));
-    b.onclick=()=>{if(locked){buzz(20);return;}skinIdx=i;store.set('skin',i);buildSkins();sfx.thunk();};
+    b.innerHTML=knifeSVG(s)+`<span class="lock">${locked?'stage '+s.at:s.name}</span>`;
+    b.setAttribute('aria-label',locked?`${s.name}, locked, reach stage ${s.at}`:s.name);
+    b.onclick=()=>{
+      if(locked){buzz(20);showInfo(i);return;}
+      skinIdx=i;store.set('skin',i);buildSkins();sfx.thunk();
+    };
     grid.appendChild(b);
   });
+  showInfo(skinIdx);
+}
+function showInfo(i){
+  const s=SKINS[i], locked=s.at>bestStage;
+  $('infoName').textContent=s.name;
+  $('infoDesc').textContent=s.desc;
+  $('infoLock').textContent=locked?'reach stage '+s.at+' to unlock':(i===skinIdx?'equipped':'');
 }
 
 /* ---- sound: made in code, no files ---- */
