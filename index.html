@@ -24,7 +24,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Fredoka',system-ui,sans-serif;font-weight:600;}
-canvas{position:fixed;inset:0;display:block;touch-action:none;}
+#c{position:fixed;inset:0;display:block;touch-action:none;}
 
 .screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;
   padding:max(28px,env(safe-area-inset-top)) 24px max(28px,env(safe-area-inset-bottom));}
@@ -60,13 +60,13 @@ button:focus-visible{outline:3px solid var(--coral);outline-offset:3px;}
 #skins h2{font-size:48px;font-weight:700;margin-top:2vh;}
 #skins p{font-size:15px;color:var(--soft);margin-top:4px;}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:100%;margin-top:22px;}
-.skin{position:relative;aspect-ratio:3/5;border-radius:20px;border:3px solid var(--pale);background:rgba(255,255,255,.45);
+.skin{position:relative;border-radius:20px;border:3px solid var(--pale);background:rgba(255,255,255,.45);
   display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0;margin:0;cursor:pointer;}
-.skin svg{width:44%;height:auto;}
+.skin canvas{display:block;}
 .skin.sel{border-color:var(--ink);background:#fff;}
-.skin.locked svg{opacity:.18;}
+.skin.locked canvas{opacity:.2;}
 .skin .lock{position:absolute;bottom:7px;left:0;right:0;text-align:center;font-size:12px;color:var(--soft);}
-.skin svg{margin-bottom:12px;}
+.skin canvas{margin:6px 0 22px;}
 .skin.sel .lock{color:var(--ink);}
 .info{width:100%;margin-top:18px;background:#fff;border-radius:22px;padding:16px 18px;text-align:center;}
 .info b{display:block;font-size:26px;font-weight:700;color:var(--coral);}
@@ -144,7 +144,7 @@ let best=store.get('best',0), bestStage=store.get('bestStage',0), bosses=store.g
 /* a boss every 10 stages; each world is one boss long */
 const BOSS_EVERY=10;
 
-/* knife skins: handle + blade colour, unlocked by best stage reached */
+/* knives: name, handle + blade colour, ability, and the boss that unlocks it */
 /* every knife has a real ability, most with a catch. Beating boss N
    (stage N*10) unlocks the knife with boss:N.
 
@@ -154,7 +154,7 @@ const BOSS_EVERY=10;
 const SKINS=[
   {name:'classic', h:'#3d2c4f',b:'#ffffff',boss:0,desc:'no tricks. pure skill.'},
   {name:'needle',  h:'#ff6b6b',b:'#ffffff',boss:1,wf:.5,  desc:'thinner blade, fits into tighter gaps.'},
-  {name:'frost',   h:'#4ecdc4',b:'#ffffff',boss:2,spin:.75, desc:'the target spins 25% slower.'},
+  {name:'frost',   h:'#4ecdc4',b:'#e4f7ff',boss:2,spin:.75, desc:'the target spins 25% slower.'},
   {name:'lucky',   h:'#ffb84d',b:'#ffffff',boss:3,pts:2,spin:1.15, desc:'2 points per hit, but the target spins 15% faster.'},
   {name:'bullet',  h:'#7b6cf6',b:'#ffffff',boss:4,fly:1.6, desc:'flies 60% faster, so your timing is easier.'},
   {name:'guardian',h:'#2ec27e',b:'#ffffff',boss:5,saves:1, desc:'survives 1 crash per run.'},
@@ -412,19 +412,100 @@ function predictLanding(){
 }
 /* outline colour for knives: light on dark worlds so they don't vanish */
 let knifeInk='#3d2c4f';
-function knifePath(L,w,skin,outline){
-  /* tip at 0,0 pointing up, the knife hangs down along +y */
-  const s=skin<0?{h:C.soft,b:'#fff'}:SKINS[skin]||SKINS[0];
-  ctx.lineJoin='round';ctx.lineWidth=Math.max(1.5,w*0.14);ctx.strokeStyle=knifeInk;
-  ctx.beginPath();
-  ctx.moveTo(0,0);ctx.lineTo(w/2,L*0.13);ctx.lineTo(w/2,L*0.55);ctx.lineTo(-w/2,L*0.55);ctx.lineTo(-w/2,L*0.13);ctx.closePath();
-  ctx.fillStyle=s.b;ctx.fill();ctx.stroke();
-  ctx.fillStyle=knifeInk;
-  roundRect(-w*0.75,L*0.55,w*1.5,L*0.07,w*0.12);ctx.fill();
-  ctx.fillStyle=knifeInk!==C.ink&&s.h===C.ink?'#8f86ad':s.h;
-  roundRect(-w*0.42,L*0.62,w*0.84,L*0.38,w*0.38);ctx.fill();
+function rr(c,x,y,w,h,r){r=Math.min(r,w/2,h/2);c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function roundRect(x,y,w,h,r){rr(ctx,x,y,w,h,r);}
+function diamond(c,x,y,rx,ry){c.beginPath();c.moveTo(x,y-ry);c.lineTo(x+rx,y);c.lineTo(x,y+ry);c.lineTo(x-rx,y);c.closePath();}
+/* every knife has its own shape. Tip at 0,0 pointing up, the knife hangs
+   down along +y: blade to 0.55L, guard, then handle to L. */
+const SHAPES={
+  classic(c,L,w,s,ink,h){
+    c.beginPath();c.moveTo(0,0);c.lineTo(w/2,L*.13);c.lineTo(w/2,L*.55);c.lineTo(-w/2,L*.55);c.lineTo(-w/2,L*.13);c.closePath();
+    c.fillStyle=s.b;c.fill();c.stroke();
+    c.fillStyle=ink;rr(c,-w*.75,L*.55,w*1.5,L*.07,w*.12);c.fill();
+    c.fillStyle=h;rr(c,-w*.42,L*.62,w*.84,L*.38,w*.38);c.fill();
+  },
+  needle(c,L,w,s,ink,h){
+    c.beginPath();c.moveTo(0,0);c.lineTo(w/2,L*.2);c.lineTo(w/2,L*.64);c.lineTo(-w/2,L*.64);c.lineTo(-w/2,L*.2);c.closePath();
+    c.fillStyle=s.b;c.fill();c.stroke();
+    c.fillStyle=ink;c.beginPath();c.arc(0,L*.665,w*1.05,0,Math.PI*2);c.fill();
+    c.fillStyle=h;rr(c,-w*.5,L*.69,w,L*.25,w*.45);c.fill();
+    c.beginPath();c.arc(0,L*.965,w*.62,0,Math.PI*2);c.stroke();
+  },
+  frost(c,L,w,s,ink,h){
+    c.beginPath();c.moveTo(0,0);
+    [[.5,.12],[.28,.22],[.58,.32],[.3,.42],[.5,.55]].forEach(([x,y])=>c.lineTo(w*x,L*y));
+    [[-.5,.55],[-.3,.42],[-.58,.32],[-.28,.22],[-.5,.12]].forEach(([x,y])=>c.lineTo(w*x,L*y));
+    c.closePath();c.fillStyle=s.b;c.fill();c.stroke();
+    c.save();c.strokeStyle='#8fd3ec';c.lineWidth*=.8;c.beginPath();c.moveTo(0,L*.06);c.lineTo(0,L*.5);c.stroke();c.restore();
+    c.fillStyle='#8fd3ec';diamond(c,0,L*.585,w*.95,L*.05);c.fill();c.stroke();
+    c.fillStyle=h;rr(c,-w*.42,L*.63,w*.84,L*.37,w*.38);c.fill();
+    c.save();c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth*=.8;
+    [.73,.82,.91].forEach(y=>{c.beginPath();c.moveTo(-w*.42,L*y);c.lineTo(w*.42,L*(y+.03));c.stroke();});c.restore();
+  },
+  lucky(c,L,w,s,ink,h){
+    c.beginPath();c.moveTo(0,0);c.quadraticCurveTo(w*1.05,L*.26,w*.4,L*.55);c.lineTo(-w*.4,L*.55);c.quadraticCurveTo(-w*1.05,L*.26,0,0);c.closePath();
+    c.fillStyle=s.b;c.fill();c.stroke();
+    c.save();c.strokeStyle='rgba(61,44,79,.25)';c.beginPath();c.moveTo(0,L*.08);c.lineTo(0,L*.5);c.stroke();c.restore();
+    c.fillStyle=ink;rr(c,-w*.7,L*.55,w*1.4,L*.06,w*.12);c.fill();
+    c.fillStyle=h;rr(c,-w*.4,L*.61,w*.8,L*.3,w*.35);c.fill();
+    c.fillStyle='#ffd166';c.beginPath();c.arc(0,L*.93,w*.58,0,Math.PI*2);c.fill();c.stroke();
+    c.beginPath();c.arc(0,L*.93,w*.28,0,Math.PI*2);c.stroke();
+  },
+  bullet(c,L,w,s,ink,h){
+    c.beginPath();c.moveTo(-w/2,L*.55);c.lineTo(-w/2,L*.2);c.quadraticCurveTo(-w/2,0,0,0);c.quadraticCurveTo(w/2,0,w/2,L*.2);c.lineTo(w/2,L*.55);c.closePath();
+    c.fillStyle=s.b;c.fill();c.stroke();
+    c.beginPath();c.moveTo(-w/2,L*.27);c.lineTo(w/2,L*.27);c.stroke();
+    c.fillStyle=ink;rr(c,-w*.6,L*.55,w*1.2,L*.05,w*.1);c.fill();
+    c.fillStyle=h;
+    c.beginPath();c.moveTo(-w*.4,L*.76);c.lineTo(-w,L*.99);c.lineTo(-w*.4,L*.93);c.closePath();c.fill();c.stroke();
+    c.beginPath();c.moveTo(w*.4,L*.76);c.lineTo(w,L*.99);c.lineTo(w*.4,L*.93);c.closePath();c.fill();c.stroke();
+    rr(c,-w*.4,L*.6,w*.8,L*.38,w*.2);c.fill();c.stroke();
+  },
+  guardian(c,L,w,s,ink,h){
+    const bw=w*1.2;
+    c.beginPath();c.moveTo(0,0);c.lineTo(bw/2,L*.1);c.lineTo(bw/2,L*.55);c.lineTo(-bw/2,L*.55);c.lineTo(-bw/2,L*.1);c.closePath();
+    c.fillStyle=s.b;c.fill();c.stroke();
+    c.save();c.strokeStyle='#c9c3d6';c.beginPath();c.moveTo(0,L*.12);c.lineTo(0,L*.5);c.stroke();c.restore();
+    c.fillStyle=ink;rr(c,-w*1.2,L*.55,w*2.4,L*.07,w*.2);c.fill();
+    c.beginPath();c.arc(-w*1.2,L*.57,w*.22,0,Math.PI*2);c.arc(w*1.2,L*.57,w*.22,0,Math.PI*2);c.fill();
+    c.fillStyle=h;rr(c,-w*.38,L*.62,w*.76,L*.26,w*.3);c.fill();
+    c.beginPath();c.moveTo(-w*.6,L*.88);c.lineTo(w*.6,L*.88);c.lineTo(w*.6,L*.94);c.quadraticCurveTo(w*.6,L*1.0,0,L*1.02);c.quadraticCurveTo(-w*.6,L*1.0,-w*.6,L*.94);c.closePath();
+    c.fill();c.stroke();
+  },
+  scope(c,L,w,s,ink,h){
+    c.beginPath();c.moveTo(0,0);c.lineTo(w/2,L*.15);c.lineTo(w/2,L*.55);c.lineTo(-w/2,L*.55);
+    for(let i=0;i<5;i++){const y=L*(.47-i*.06);c.lineTo(-w*.5,y);c.lineTo(-w*.32,y-L*.03);}
+    c.lineTo(-w/2,L*.08);c.closePath();
+    c.fillStyle=s.b;c.fill();c.stroke();
+    c.save();c.strokeStyle='rgba(255,255,255,.55)';c.beginPath();c.moveTo(w*.22,L*.17);c.lineTo(w*.22,L*.52);c.stroke();c.restore();
+    c.fillStyle=ink;rr(c,-w*.78,L*.55,w*1.56,L*.075,w*.12);c.fill();
+    c.fillStyle='#ff6b6b';c.beginPath();c.arc(0,L*.588,w*.3,0,Math.PI*2);c.fill();
+    c.fillStyle='#fff';c.beginPath();c.arc(-w*.09,L*.578,w*.09,0,Math.PI*2);c.fill();
+    c.fillStyle=h;rr(c,-w*.42,L*.63,w*.84,L*.37,w*.16);c.fill();
+    c.save();c.strokeStyle='rgba(61,44,79,.45)';c.lineWidth*=.8;
+    [.71,.78,.85,.92].forEach(y=>{c.beginPath();c.moveTo(-w*.42,L*y);c.lineTo(w*.42,L*y);c.stroke();});c.restore();
+  },
+  golden(c,L,w,s,ink,h){
+    const N=12, edge=i=>Math.sin(i/N*Math.PI*3)*w*.14, y=i=>L*(.1+i/N*.45);
+    c.beginPath();c.moveTo(0,0);
+    for(let i=0;i<=N;i++)c.lineTo(w*.42+edge(i),y(i));
+    for(let i=N;i>=0;i--)c.lineTo(-w*.42+edge(i),y(i));
+    c.closePath();c.fillStyle=s.b;c.fill();c.stroke();
+    c.fillStyle=ink;rr(c,-w*.9,L*.55,w*1.8,L*.07,w*.2);c.fill();
+    c.fillStyle='#ff6b6b';diamond(c,0,L*.585,w*.32,L*.04);c.fill();
+    c.fillStyle=h;rr(c,-w*.4,L*.62,w*.8,L*.32,w*.3);c.fill();
+    c.save();c.strokeStyle='#ffd166';c.lineWidth*=1.1;
+    [.7,.79,.88].forEach(y=>{c.beginPath();c.moveTo(-w*.4,L*y);c.lineTo(w*.4,L*y);c.stroke();});c.restore();
+    c.fillStyle='#ff6b6b';diamond(c,0,L*.975,w*.42,L*.035);c.fill();c.stroke();
+  },
+};
+function knifeOn(c,L,w,skin,ink){
+  const s=skin<0?{name:'classic',h:C.soft,b:'#fff'}:SKINS[skin]||SKINS[0];
+  const h=ink!==C.ink&&s.h===C.ink?'#8f86ad':s.h;
+  c.lineJoin='round';c.lineCap='round';c.lineWidth=Math.max(1.5,w*0.14);c.strokeStyle=ink;
+  (SHAPES[s.name]||SHAPES.classic)(c,L,w,s,ink,h);
 }
-function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function knifePath(L,w,skin){knifeOn(ctx,L,w,skin,knifeInk);}
 function drawKnife(x,y,rot,L,w,skin){ctx.save();ctx.translate(x,y);ctx.rotate(rot);knifePath(L,w,skin);ctx.restore();}
 
 function drawTarget(cx,cy,R,theta,boss,th=WORLDS[0]){
@@ -583,10 +664,6 @@ function paintMenu(){
   $('mute').textContent=muted?'\u{1F507}':'\u{1F50A}';
   $('mute').setAttribute('aria-label',muted?'Sound on':'Sound off');
 }
-function knifeSVG(s){
-  return `<svg viewBox="-14 -3 28 96" aria-hidden="true"><g transform="scale(${s.wf||1},1)"><path d="M0 0 L8 12 L8 50 L-8 50 L-8 12 Z" fill="${s.b}" stroke="#3d2c4f" stroke-width="2.6" stroke-linejoin="round"/>`+
-    `<rect x="-12" y="50" width="24" height="6" rx="2" fill="#3d2c4f"/><rect x="-7" y="56" width="14" height="36" rx="6" fill="${s.h}"/></g></svg>`;
-}
 function buildSkins(){
   const grid=$('grid');grid.innerHTML='';
   SKINS.forEach((s,i)=>{
@@ -594,7 +671,12 @@ function buildSkins(){
     const locked=s.boss>bosses;
     b.type='button';
     b.className='skin'+(i===skinIdx?' sel':'')+(locked?' locked':'');
-    b.innerHTML=knifeSVG(s)+`<span class="lock">${locked?'boss '+s.boss:s.name}</span>`;
+    const cvs=document.createElement('canvas'), cw=52, chh=108, r=Math.min(window.devicePixelRatio||1,3);
+    cvs.width=cw*r;cvs.height=chh*r;cvs.style.width=cw+'px';cvs.style.height=chh+'px';
+    const c2=cvs.getContext('2d');c2.scale(r,r);c2.translate(cw/2,4);
+    knifeOn(c2,chh*.86,16*(s.wf||1),i,C.ink);
+    b.appendChild(cvs);
+    b.insertAdjacentHTML('beforeend',`<span class="lock">${locked?'boss '+s.boss:s.name}</span>`);
     b.setAttribute('aria-label',locked?`${s.name}, locked, beat boss ${s.boss}`:s.name);
     b.onclick=()=>{
       if(locked){buzz(20);showInfo(i);return;}
