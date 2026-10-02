@@ -38,6 +38,12 @@ Tap anywhere to throw. On a keyboard, use Space, Enter or the Up arrow.
 - Missions: 17 goals like "throw 10,000 knives", "beat 10 bosses" or "reach
   stage 50", each with a progress bar; claim a finished one for coins (coins
   are saved, with more to come)
+- Coins: +1 per stage cleared, +10 per boss, +1 per gem, plus mission rewards
+- Store:
+  - power-ups, used up one per run when switched on: extra heart (50),
+    double coins (80), aim line on any knife (60)
+  - targets, bought once: donut (150), watermelon (200), pizza (250),
+    cookie (300), vinyl (400); bosses keep their own look
 - Credits screen with YouTube and Discord
 - Hit, crash and break sounds, plus vibration on phones
 - Best score, best stage, bosses beaten, lifetime stats, coins, claimed missions, chosen knife and mute are remembered
