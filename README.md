@@ -35,5 +35,9 @@ Tap anywhere to throw. On a keyboard, use Space, Enter or the Up arrow.
   - **guardian** (boss 5): survives 1 crash per run
   - **scope** (boss 6): a dashed line shows if the throw will hit (red = crash)
   - **golden** (boss 7): 2 points per hit and survives 1 crash
+- Missions: 17 goals like "throw 10,000 knives", "beat 10 bosses" or "reach
+  stage 50", each with a progress bar; claim a finished one for coins (coins
+  are saved, with more to come)
+- Credits screen with YouTube and Discord
 - Hit, crash and break sounds, plus vibration on phones
-- Best score, best stage, bosses beaten, chosen knife and mute are remembered
+- Best score, best stage, bosses beaten, lifetime stats, coins, claimed missions, chosen knife and mute are remembered

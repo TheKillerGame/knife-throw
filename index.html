@@ -45,6 +45,46 @@ button:focus-visible{outline:3px solid var(--coral);outline-offset:3px;}
 .round{position:absolute;top:max(18px,env(safe-area-inset-top));right:18px;width:46px;height:46px;padding:0;font-size:20px;
   background:transparent;color:var(--ink);border:3px solid var(--ink);margin:0;}
 
+/* menu extras */
+.menurow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;margin-top:12px;}
+.menurow button{margin:0;font-size:17px;padding:11px 4px;position:relative;}
+.badge{position:absolute;top:-5px;right:-3px;width:16px;height:16px;border-radius:50%;background:var(--coral);border:3px solid var(--bg);display:none;}
+.badge.on{display:block;}
+.coins{position:absolute;top:max(18px,env(safe-area-inset-top));left:18px;height:46px;display:flex;align-items:center;gap:8px;
+  font-size:20px;font-weight:700;border:3px solid var(--ink);border-radius:999px;padding:0 16px 0 9px;}
+.coin{display:inline-block;width:20px;height:20px;border-radius:50%;background:#ffd166;border:2.5px solid var(--ink);flex:none;
+  box-shadow:inset 0 0 0 2.5px #ffe6a3;}
+
+/* missions */
+.panel{width:100%;max-width:380px;flex:1;min-height:0;overflow-y:auto;margin:16px 0 14px;display:flex;flex-direction:column;gap:10px;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+.panel-head{width:100%;max-width:380px;display:flex;justify-content:space-between;align-items:center;margin-top:2vh;}
+.panel-head h2{font-size:44px;font-weight:700;}
+.panel-head .coins{position:static;}
+.mission{background:#fff;border-radius:18px;padding:12px 14px 13px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;flex:none;}
+.mission .t{font-size:16px;}
+.mission .n{font-size:12px;color:var(--soft);}
+.mission .bar{height:9px;border-radius:99px;background:#f3e3d6;overflow:hidden;}
+.mission .bar i{display:block;height:100%;background:var(--coral);border-radius:99px;}
+.mission .side{grid-row:1/span 3;grid-column:2;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.reward{display:flex;align-items:center;gap:5px;font-size:16px;font-weight:700;}
+.mission button.claim{width:auto;margin:0;font-size:16px;padding:7px 14px;background:var(--coral);border-color:var(--coral);color:#fff;}
+.mission.done{opacity:.5;}
+.mission.done .bar i{background:var(--ink);}
+.mission .check{font-size:13px;color:var(--soft);}
+
+/* credits */
+.crole{width:100%;max-width:380px;background:#fff;border-radius:22px;padding:8px 18px;margin-top:18px;}
+.crole div{display:flex;justify-content:space-between;padding:9px 0;border-bottom:2px dashed #f3e3d6;font-size:16px;}
+.crole div:last-child{border-bottom:none;}
+.crole span{color:var(--soft);}
+.links{width:100%;max-width:380px;margin-top:16px;}
+.link{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;font-size:19px;font-weight:700;
+  border:3px solid var(--ink);border-radius:999px;padding:11px 10px;color:var(--ink);background:transparent;width:100%;margin:0;}
+.link+.link{margin-top:10px;}
+.link svg{width:22px;height:22px;flex:none;}
+.link.done{background:var(--ink);color:var(--bg);}
+
 /* game over */
 #over{background:rgba(255,233,214,.82);justify-content:center;}
 #over h2{font-size:72px;font-weight:700;color:var(--coral);line-height:1;transform:rotate(-4deg);}
@@ -80,6 +120,7 @@ button:focus-visible{outline:3px solid var(--coral);outline-offset:3px;}
 
 <!-- MENU -->
 <div class="screen on" id="menu">
+  <div class="coins" id="menuCoins" aria-label="coins"><span class="coin"></span><span id="coinCount">0</span></div>
   <button class="round" id="mute" type="button" onclick="toggleMute()" aria-label="Sound off">&#x1F50A;</button>
   <div class="col">
     <div class="logo">knife<br><span>throw</span></div>
@@ -89,8 +130,43 @@ button:focus-visible{outline:3px solid var(--coral);outline-offset:3px;}
   <div class="fill"></div>
   <div class="col">
     <button type="button" onclick="startGame()">play</button>
-    <button class="ghost" type="button" onclick="openSkins()">knives</button>
+    <div class="menurow">
+      <button class="ghost" type="button" onclick="openSkins()">knives</button>
+      <button class="ghost" type="button" onclick="openMissions()">missions<span class="badge" id="mBadge"></span></button>
+      <button class="ghost" type="button" onclick="openCredits()">credits</button>
+    </div>
   </div>
+</div>
+
+<!-- MISSIONS -->
+<div class="screen" id="missions">
+  <div class="panel-head">
+    <h2>missions</h2>
+    <div class="coins"><span class="coin"></span><span id="mCoins">0</span></div>
+  </div>
+  <div class="panel" id="mList"></div>
+  <div class="col"><button type="button" onclick="goMenu()">back</button></div>
+</div>
+
+<!-- CREDITS -->
+<div class="screen" id="credits">
+  <div class="col">
+    <div class="logo" style="font-size:48px;margin-top:2vh">credits</div>
+    <div class="crole">
+      <div><span>game</span><b>RisingForce</b></div>
+      <div><span>design</span><b>RisingForce</b></div>
+      <div><span>code</span><b>RisingForce</b></div>
+      <div><span>art</span><b>RisingForce</b></div>
+      <div><span>sound</span><b>RisingForce</b></div>
+      <div><span>font</span><b>Fredoka</b></div>
+    </div>
+    <div class="links">
+      <a class="link" href="https://www.youtube.com/@RisingForce1337" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg><span>youtube</span></a>
+      <button class="link" id="dcopy" type="button" onclick="copyDiscord()"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#5865F2" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg><span class="lbl">discord</span></button>
+    </div>
+  </div>
+  <div class="fill"></div>
+  <div class="col"><button type="button" onclick="goMenu()">back</button></div>
 </div>
 
 <!-- GAME OVER -->
@@ -143,6 +219,35 @@ const store={
 let best=store.get('best',0), bestStage=store.get('bestStage',0), bosses=store.get('bosses',0), skinIdx=store.get('skin',0), muted=store.get('mute',false);
 /* a boss every 10 stages; each world is one boss long */
 const BOSS_EVERY=10;
+
+/* lifetime stats (missions read these) and coins */
+const stats=Object.assign({throws:0,hits:0,games:0,stages:0,bosses:0,gems:0},store.get('stats',{}));
+let coins=store.get('coins',0);
+const claimed=new Set(store.get('claimed',[]));
+const bump=(k,n=1)=>{stats[k]=(stats[k]||0)+n;};
+const saveStats=()=>store.set('stats',stats);
+/* missions: progress comes from a lifetime stat or a best; claim for coins */
+const MISSIONS=[
+  {id:'throw100', text:'throw 100 knives',       stat:'throws', goal:100,   coins:25},
+  {id:'throw1k',  text:'throw 1,000 knives',     stat:'throws', goal:1000,  coins:100},
+  {id:'throw10k', text:'throw 10,000 knives',    stat:'throws', goal:10000, coins:500},
+  {id:'games5',   text:'play 5 games',           stat:'games',  goal:5,     coins:20},
+  {id:'games50',  text:'play 50 games',          stat:'games',  goal:50,    coins:150},
+  {id:'stages25', text:'clear 25 stages',        stat:'stages', goal:25,    coins:50},
+  {id:'stages250',text:'clear 250 stages',       stat:'stages', goal:250,   coins:300},
+  {id:'boss1',    text:'beat a boss',            stat:'bosses', goal:1,     coins:50},
+  {id:'boss10',   text:'beat 10 bosses',         stat:'bosses', goal:10,    coins:300},
+  {id:'reach15',  text:'reach stage 15',         val:()=>bestStage, goal:15, coins:75},
+  {id:'reach30',  text:'reach stage 30',         val:()=>bestStage, goal:30, coins:200},
+  {id:'reach50',  text:'reach stage 50',         val:()=>bestStage, goal:50, coins:500},
+  {id:'score50',  text:'score 50 in one run',    val:()=>best, goal:50,  coins:40},
+  {id:'score150', text:'score 150 in one run',   val:()=>best, goal:150, coins:150},
+  {id:'score400', text:'score 400 in one run',   val:()=>best, goal:400, coins:400},
+  {id:'gems10',   text:'collect 10 gems',        stat:'gems',   goal:10,    coins:60},
+  {id:'gems100',  text:'collect 100 gems',       stat:'gems',   goal:100,   coins:300},
+];
+const progress=m=>Math.min(m.goal,m.stat?(stats[m.stat]||0):m.val());
+const claimable=m=>!claimed.has(m.id)&&progress(m)>=m.goal;
 
 /* knives: name, handle + blade colour, ability, and the boss that unlocks it */
 /* every knife has a real ability, most with a catch. Beating boss N
@@ -267,17 +372,55 @@ function spinSpeed(t){
 function startGame(){
   audio();
   G.stage=1;G.score=0;G.pieces=[];G.chips=[];G.pops=[];G.shake=0;G.flash=0;G.saves=perk().saves||0;
+  bump('games');
   show(null);
   newStage();
 }
 function goMenu(){mode='menu';show('menu');paintMenu();}
 function openSkins(){mode='skins';buildSkins();show('skins');}
+function openMissions(){mode='skins';buildMissions();show('missions');}
+function openCredits(){mode='skins';show('credits');}
+function buildMissions(){
+  $('mCoins').textContent=coins;
+  const order=m=>claimable(m)?0:claimed.has(m.id)?2:1;
+  const list=MISSIONS.slice().sort((a,b)=>order(a)-order(b));
+  $('mList').innerHTML='';
+  for(const m of list){
+    const have=progress(m), done=claimed.has(m.id), ready=claimable(m);
+    const el=document.createElement('div');
+    el.className='mission'+(done?' done':'');
+    el.innerHTML=`<div class="t">${m.text}</div>`+
+      `<div class="side">${ready?`<button class="claim" type="button">claim</button>`:''}`+
+      `<div class="reward"><span class="coin"></span>${m.coins}</div>${done?'<span class="check">claimed</span>':''}</div>`+
+      `<div class="bar"><i style="width:${(have/m.goal*100).toFixed(1)}%"></i></div>`+
+      `<div class="n">${have.toLocaleString('en-US')} / ${m.goal.toLocaleString('en-US')}</div>`;
+    if(ready)el.querySelector('.claim').onclick=()=>claim(m);
+    $('mList').appendChild(el);
+  }
+}
+function claim(m){
+  if(!claimable(m))return;
+  claimed.add(m.id);store.set('claimed',[...claimed]);
+  coins+=m.coins;store.set('coins',coins);
+  audio();sfx.ding();buzz(15);
+  buildMissions();
+}
+/* Discord usernames can't be linked without a numeric id, so this copies the handle */
+function copyDiscord(){
+  const el=$('dcopy'), lbl=el.querySelector('.lbl'), tag='risingforce1337';
+  const flash=ok=>{lbl.textContent=ok?'copied: '+tag:'discord';el.classList.toggle('done',ok);
+    clearTimeout(copyDiscord.t);copyDiscord.t=setTimeout(()=>{lbl.textContent='discord';el.classList.remove('done');},1600);};
+  const legacy=()=>{try{const ta=document.createElement('textarea');ta.value=tag;ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();flash(ok);}catch(e){flash(false);}};
+  try{navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(tag).then(()=>flash(true),legacy):legacy();}catch(e){legacy();}
+}
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));}
 
 /* ---- throwing ---- */
 function throwKnife(){
   if(mode!=='play'||G.flying||G.ammo<=0||G.intro>0.55)return;
   G.ammo--;
+  bump('throws');
   G.flying={y:geo().throwY};
   sfx.whoosh();
 }
@@ -298,13 +441,14 @@ function land(){
   }
   G.stuck.push({a,kind:'knife',wf:perk().wf||1,skin:skinIdx});
   G.flying=null;
+  bump('hits');
   G.score+=perk().pts||1;
   G.shake=Math.max(G.shake,.09);
   const rings=G.boss?G.W.boss:G.W.rings;
   for(let i=0;i<5;i++)G.chips.push({x:g.cx+(Math.random()-.5)*g.w,y:g.cy+g.R,vx:(Math.random()-.5)*260,vy:Math.random()*-60+80,life:.45,c:Math.random()<.5?rings[0]:rings[1]});
   const gi=G.gems.findIndex(k=>angDist(k.a,a)<11);
   if(gi>=0){
-    G.gems.splice(gi,1);G.score+=3;
+    G.gems.splice(gi,1);G.score+=3;bump('gems');
     G.pops.push({x:g.cx,y:g.cy+g.R+g.L*.5,txt:'+3',t:.9,c:'#e0a800'});
     for(let i=0;i<8;i++)G.chips.push({x:g.cx,y:g.cy+g.R,vx:(Math.random()-.5)*380,vy:-Math.random()*260,life:.6,c:'#ffd166'});
     sfx.ding();
@@ -337,6 +481,7 @@ function fail(){
 function clearStage(){
   const g=geo();
   mode='clear';G.timer=G.boss?1.75:1.0;G.shake=.28;
+  bump('stages');if(G.boss)bump('bosses');saveStats();
   const rings=G.boss?G.W.boss:G.W.rings;
   if(G.boss)G.pops.push({x:W/2,y:g.cy+g.R+g.L+60,txt:'boss beaten!',t:1.6,c:C.coral,size:42});
   G.gems=[];
@@ -373,6 +518,7 @@ function gameOver(){
   $('oStage').textContent=G.stage;
   $('oBest').textContent='best '+best+' · stage '+bestStage;
   $('newBest').classList.toggle('on',newBest&&best>0);
+  saveStats();
   show('over');
 }
 
@@ -661,6 +807,8 @@ requestAnimationFrame(frame);
 function paintMenu(){
   $('bestLine').textContent=best>0?'best '+best+' · stage '+bestStage:"tap to throw. don't hit a knife.";
   $('knifeLine').textContent='knife: '+perk().name;
+  $('coinCount').textContent=coins;
+  $('mBadge').classList.toggle('on',MISSIONS.some(claimable));
   $('mute').textContent=muted?'\u{1F507}':'\u{1F50A}';
   $('mute').setAttribute('aria-label',muted?'Sound on':'Sound off');
 }
@@ -728,7 +876,7 @@ function buzz(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
 function toggleMute(){muted=!muted;store.set('mute',muted);paintMenu();}
 
 /* stop the game clock while the tab is hidden, so a run can't die off-screen */
-document.addEventListener('visibilitychange',()=>{last=performance.now();if(document.hidden&&ac)ac.suspend();else if(ac)ac.resume();});
+document.addEventListener('visibilitychange',()=>{last=performance.now();if(document.hidden){saveStats();if(ac)ac.suspend();}else if(ac)ac.resume();});
 
 paintMenu();
 </script>
