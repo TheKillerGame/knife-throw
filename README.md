@@ -8,7 +8,9 @@ By **RisingForce**.
 
 ## Play
 
-Open `index.html` in any browser, on a phone or a computer. It's a single file
+**Play it here: https://thekillergame.github.io/knife-throw/**
+
+Or open `index.html` in any browser, on a phone or a computer. It's a single file
 with no install, no server and no internet needed (the font is embedded and the
 sounds are made in code).
 
