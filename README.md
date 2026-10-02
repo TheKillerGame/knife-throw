@@ -18,21 +18,22 @@ Tap anywhere to throw. On a keyboard, use Space, Enter or the Up arrow.
 
 - Stages get harder: more knives, knives already stuck in the target, and spin
   that speeds up, swings back and forth, or stops and starts
-- Every 5th stage is a boss with a darker target and nastier spin, worth +5
+- Every 10th stage is a boss with a darker target and nastier spin, worth +5
 - Beating a boss takes you to a new world, each with its own colours and a new twist:
-  - **peach** (stages 1-5): the basics
-  - **mint** (6-10): gems on the rim, +3 when your knife lands on one
-  - **lilac** (11-15): every hit flips the spin direction
-  - **night** (16-20): dark, with metal bolts on the rim that block like knives
+  - **peach** (stages 1-10): the basics
+  - **mint** (11-20): gems on the rim, +3 when your knife lands on one
+  - **lilac** (21-30): every hit flips the spin direction
+  - **night** (31-40): dark, with metal bolts on the rim that block like knives
   - after night the worlds loop with every twist at once, and the spin keeps getting faster
-- 8 knives, each with its own ability, unlocked by reaching a stage:
+- 8 knives, each with its own ability. You start with classic; every boss you
+  beat for the first time unlocks the next one:
   - **classic**: no tricks
-  - **needle** (stage 2): half-width blade, fits into tighter gaps
-  - **frost** (stage 4): the target spins 25% slower
-  - **lucky** (stage 6): 2 points per hit, but the target spins 15% faster
-  - **bullet** (stage 8): flies 60% faster, so timing is easier
-  - **guardian** (stage 10): survives 1 crash per run
-  - **scope** (stage 15): a dashed line shows if the throw will hit (red = crash)
-  - **golden** (stage 20): 2 points per hit and survives 1 crash
+  - **needle** (boss 1): half-width blade, fits into tighter gaps
+  - **frost** (boss 2): the target spins 25% slower
+  - **lucky** (boss 3): 2 points per hit, but the target spins 15% faster
+  - **bullet** (boss 4): flies 60% faster, so timing is easier
+  - **guardian** (boss 5): survives 1 crash per run
+  - **scope** (boss 6): a dashed line shows if the throw will hit (red = crash)
+  - **golden** (boss 7): 2 points per hit and survives 1 crash
 - Hit, crash and break sounds, plus vibration on phones
-- Best score, best stage, chosen knife and mute are remembered
+- Best score, best stage, bosses beaten, chosen knife and mute are remembered
