@@ -19,6 +19,12 @@ Tap anywhere to throw. On a keyboard, use Space, Enter or the Up arrow.
 - Stages get harder: more knives, knives already stuck in the target, and spin
   that speeds up, swings back and forth, or stops and starts
 - Every 5th stage is a boss with a darker target and nastier spin, worth +5
+- Beating a boss takes you to a new world, each with its own colours and a new twist:
+  - **peach** (stages 1-5): the basics
+  - **mint** (6-10): gems on the rim, +3 when your knife lands on one
+  - **lilac** (11-15): every hit flips the spin direction
+  - **night** (16-20): dark, with metal bolts on the rim that block like knives
+  - after night the worlds loop with every twist at once, and the spin keeps getting faster
 - 8 knives, each with its own ability, unlocked by reaching a stage:
   - **classic**: no tricks
   - **needle** (stage 2): half-width blade, fits into tighter gaps

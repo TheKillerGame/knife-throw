@@ -163,6 +163,19 @@ if(!SKINS[skinIdx]||SKINS[skinIdx].at>bestStage)skinIdx=0;
 const C={ink:'#3d2c4f',coral:'#ff6b6b',bg:'#ffe9d6',soft:'#9a8a8a',pale:'#e8cbb6'};
 const RINGS=['#ff6b6b','#ffb3a7','#ff6b6b','#ffd2c8'];
 const BOSS_RINGS=['#3d2c4f','#6b4f86','#3d2c4f','#ff6b6b'];
+/* every 5 stages is a world; beating its boss moves you to the next one,
+   with new colours and one new twist. After night they loop with every
+   twist switched on, and the spin keeps getting faster. */
+const WORLDS=[
+  {name:'peach',bg:'#ffe9d6',rings:RINGS,boss:BOSS_RINGS,twist:'tap to throw'},
+  {name:'mint', bg:'#dcf3e8',rings:['#2bb593','#93dcc6','#2bb593','#cdf0e4'],boss:['#1f4a43','#2f7568','#1f4a43','#2bb593'],gems:1,twist:'hit the gems for +3'},
+  {name:'lilac',bg:'#ebe3ff',rings:['#8a6cf2','#c4b5ff','#8a6cf2','#e1d9ff'],boss:['#2c2250','#473a80','#2c2250','#8a6cf2'],flip:1,twist:'every hit flips the spin'},
+  {name:'night',bg:'#211c38',rings:['#ff6b6b','#ffb3a7','#ff6b6b','#ffd2c8'],boss:['#ffd166','#ffe6a3','#ffd166','#ff6b6b'],bolts:1,dark:1,twist:'metal bolts block your knives'},
+];
+function worldFor(stage){
+  const n=Math.floor((stage-1)/5), loop=Math.floor(n/4), w=WORLDS[n%4];
+  return loop?{...w,gems:1,flip:1,bolts:1,loop,num:n+1,twist:'everything at once!'}:{...w,loop:0,num:n+1};
+}
 
 /* ---- canvas size (sharp on retina) ---- */
 let W=0,H=0,dpr=1,safeTop=0;
@@ -181,7 +194,7 @@ window.addEventListener('resize',resize);resize();
 
 /* ---- game state ---- */
 let mode='menu';            // menu | play | dying | clear | over
-const G={stage:1,score:0,ammo:0,needed:0,stuck:[],theta:0,t:0,pattern:0,base:0,dir:1,boss:false,
+const G={stage:1,score:0,ammo:0,needed:0,stuck:[],gems:[],pops:[],theta:0,t:0,pattern:0,base:0,dir:1,boss:false,
   flying:null,pieces:[],chips:[],shake:0,flash:0,intro:0,timer:0};
 const menuStuck=[20,95,160,235,300].map(a=>({a,kind:'knife'}));
 let menuTheta=0;
@@ -210,13 +223,30 @@ function newStage(){
     const a=Math.random()*360;
     if(G.stuck.every(k=>angDist(k.a,a)>38)){G.stuck.push({a,kind:'pre'});i++;}
   }
+  const Wd=G.W=worldFor(s);
+  /* night: metal bolts on the rim that block like knives */
+  if(Wd.bolts){
+    for(let i=0,tries=0,nb=G.boss?3:2;i<nb&&tries<200;tries++){
+      const a=Math.random()*360;
+      if(G.stuck.every(k=>angDist(k.a,a)>34)){G.stuck.push({a,kind:'bolt',wf:1.1});i++;}
+    }
+  }
+  /* mint: gems on the rim, +3 when a knife lands on one */
+  G.gems=[];
+  if(Wd.gems){
+    for(let i=0,tries=0,ng=G.boss?3:2;i<ng&&tries<200;tries++){
+      const a=Math.random()*360;
+      if(G.stuck.every(k=>angDist(k.a,a)>24)&&G.gems.every(k=>angDist(k.a,a)>40)){G.gems.push({a});i++;}
+    }
+  }
   G.theta=Math.random()*360;G.t=0;
   G.dir=Math.random()<.5?-1:1;
-  G.base=Math.min(95+s*9,280)*(G.boss?1.15:1);
+  G.base=Math.min(95+s*9,280+Wd.loop*40)*(G.boss?1.15:1);
   /* spin style: steady early on, then speed-ups, swings, stop-and-go */
   G.pattern=G.boss?[2,4,3][(s/5-1)%3]:s<3?0:(s-1)%5;
   G.flying=null;
-  G.intro=1.0;
+  G.newWorld=s>1&&(s-1)%5===0;
+  G.intro=G.newWorld?1.9:1.0;
   mode='play';
 }
 function spinSpeed(t){
@@ -232,7 +262,7 @@ function spinSpeed(t){
 
 function startGame(){
   audio();
-  G.stage=1;G.score=0;G.pieces=[];G.chips=[];G.shake=0;G.flash=0;G.saves=perk().saves||0;
+  G.stage=1;G.score=0;G.pieces=[];G.chips=[];G.pops=[];G.shake=0;G.flash=0;G.saves=perk().saves||0;
   show(null);
   newStage();
 }
@@ -266,7 +296,16 @@ function land(){
   G.flying=null;
   G.score+=perk().pts||1;
   G.shake=Math.max(G.shake,.09);
-  for(let i=0;i<5;i++)G.chips.push({x:g.cx+(Math.random()-.5)*g.w,y:g.cy+g.R,vx:(Math.random()-.5)*260,vy:Math.random()*-60+80,life:.45,c:Math.random()<.5?RINGS[0]:RINGS[1]});
+  const rings=G.boss?G.W.boss:G.W.rings;
+  for(let i=0;i<5;i++)G.chips.push({x:g.cx+(Math.random()-.5)*g.w,y:g.cy+g.R,vx:(Math.random()-.5)*260,vy:Math.random()*-60+80,life:.45,c:Math.random()<.5?rings[0]:rings[1]});
+  const gi=G.gems.findIndex(k=>angDist(k.a,a)<11);
+  if(gi>=0){
+    G.gems.splice(gi,1);G.score+=3;
+    G.pops.push({x:g.cx,y:g.cy+g.R+g.L*.5,txt:'+3',t:.9,c:'#e0a800'});
+    for(let i=0;i<8;i++)G.chips.push({x:g.cx,y:g.cy+g.R,vx:(Math.random()-.5)*380,vy:-Math.random()*260,life:.6,c:'#ffd166'});
+    sfx.ding();
+  }
+  if(G.W.flip)G.dir*=-1;
   buzz(8);sfx.thunk();
   if(G.ammo===0)clearStage();
 }
@@ -294,14 +333,16 @@ function fail(){
 function clearStage(){
   const g=geo();
   mode='clear';G.timer=1.0;G.shake=.28;
-  const rings=G.boss?BOSS_RINGS:RINGS;
+  const rings=G.boss?G.W.boss:G.W.rings;
+  if(G.boss)G.pops.push({x:W/2,y:g.cy+g.R+g.L+60,txt:'boss beaten!',t:1.1,c:C.coral,size:42});
+  G.gems=[];
   const n=6, off=Math.random()*60;
   for(let i=0;i<n;i++){
     const a0=off+i*60, mid=rad(a0+30+G.theta);
     G.pieces.push({type:'wedge',x:g.cx,y:g.cy,vx:Math.cos(mid)*(240+Math.random()*160),vy:Math.sin(mid)*(240+Math.random()*160)-260,
       rot:rad(G.theta),vr:(Math.random()-.5)*8,a0,a1:a0+60,R:g.R,rings});
   }
-  G.stuck.forEach(k=>{
+  G.stuck.filter(k=>k.kind!=='bolt').forEach(k=>{
     const ang=rad(k.a+G.theta);
     G.pieces.push({type:'knife',x:g.cx+Math.cos(ang)*g.R*.72,y:g.cy+Math.sin(ang)*g.R*.72,
       vx:Math.cos(ang)*(200+Math.random()*150),vy:Math.sin(ang)*(200+Math.random()*150)-200,
@@ -342,6 +383,8 @@ function update(dt){
   G.pieces=G.pieces.filter(p=>p.y<H+200);
   for(const c of G.chips){c.vy+=900*dt;c.x+=c.vx*dt;c.y+=c.vy*dt;c.life-=dt;}
   G.chips=G.chips.filter(c=>c.life>0);
+  for(const q of G.pops){q.t-=dt;q.y-=40*dt;}
+  G.pops=G.pops.filter(q=>q.t>0);
   G.shake=Math.max(0,G.shake-dt);
   G.flash=Math.max(0,G.flash-dt);
   G.saveFlash=Math.max(0,(G.saveFlash||0)-dt);
@@ -355,32 +398,53 @@ function predictLanding(){
   for(let i=0;i<6;i++){th+=G.dir*spinSpeed(t)*ft/6;t+=ft/6;}
   return norm(90-th);
 }
+/* outline colour for knives: light on dark worlds so they don't vanish */
+let knifeInk='#3d2c4f';
 function knifePath(L,w,skin,outline){
   /* tip at 0,0 pointing up, the knife hangs down along +y */
   const s=skin<0?{h:C.soft,b:'#fff'}:SKINS[skin]||SKINS[0];
-  ctx.lineJoin='round';ctx.lineWidth=Math.max(1.5,w*0.14);ctx.strokeStyle=C.ink;
+  ctx.lineJoin='round';ctx.lineWidth=Math.max(1.5,w*0.14);ctx.strokeStyle=knifeInk;
   ctx.beginPath();
   ctx.moveTo(0,0);ctx.lineTo(w/2,L*0.13);ctx.lineTo(w/2,L*0.55);ctx.lineTo(-w/2,L*0.55);ctx.lineTo(-w/2,L*0.13);ctx.closePath();
   ctx.fillStyle=s.b;ctx.fill();ctx.stroke();
-  ctx.fillStyle=C.ink;
+  ctx.fillStyle=knifeInk;
   roundRect(-w*0.75,L*0.55,w*1.5,L*0.07,w*0.12);ctx.fill();
-  ctx.fillStyle=s.h;
+  ctx.fillStyle=knifeInk!==C.ink&&s.h===C.ink?'#8f86ad':s.h;
   roundRect(-w*0.42,L*0.62,w*0.84,L*0.38,w*0.38);ctx.fill();
 }
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function drawKnife(x,y,rot,L,w,skin){ctx.save();ctx.translate(x,y);ctx.rotate(rot);knifePath(L,w,skin);ctx.restore();}
 
-function drawTarget(cx,cy,R,theta,boss){
-  const rings=boss?BOSS_RINGS:RINGS;
+function drawTarget(cx,cy,R,theta,boss,th=WORLDS[0]){
+  const rings=boss?th.boss:th.rings;
   const r=[1,.78,.56,.34];
   rings.forEach((c,i)=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(cx,cy,R*r[i],0,Math.PI*2);ctx.fill();});
-  ctx.fillStyle=boss?C.bg:C.ink;ctx.beginPath();ctx.arc(cx,cy,R*.12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=boss?th.bg:C.ink;ctx.beginPath();ctx.arc(cx,cy,R*.12,0,Math.PI*2);ctx.fill();
   /* little dots on the rim so you can see it spinning */
-  ctx.fillStyle=boss?'rgba(255,233,214,.35)':'rgba(61,44,79,.18)';
+  ctx.fillStyle=boss?'rgba(255,255,255,.35)':'rgba(61,44,79,.18)';
   for(let i=0;i<8;i++){const a=rad(theta+i*45);ctx.beginPath();ctx.arc(cx+Math.cos(a)*R*.89,cy+Math.sin(a)*R*.89,R*.035,0,Math.PI*2);ctx.fill();}
+}
+/* bolts and gems sit on top of the rim, so they're drawn after the target */
+function drawRim(cx,cy,R,theta){
+  for(const k of G.stuck){
+    if(k.kind!=='bolt')continue;
+    const a=rad(k.a+theta), x=cx+Math.cos(a)*R*.97, y=cy+Math.sin(a)*R*.97, r=R*.1;
+    ctx.fillStyle='#b9b4c7';ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/4);ctx.fillStyle=C.ink;ctx.fillRect(-r*.6,-r*.14,r*1.2,r*.28);ctx.restore();
+  }
+  for(const k of G.gems){
+    const a=rad(k.a+theta), x=cx+Math.cos(a)*R*.86, y=cy+Math.sin(a)*R*.86, r=R*.11;
+    ctx.save();ctx.translate(x,y);ctx.rotate(a);
+    ctx.fillStyle='#ffd166';ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;ctx.lineJoin='round';
+    ctx.beginPath();ctx.moveTo(-r,0);ctx.lineTo(0,-r*.75);ctx.lineTo(r,0);ctx.lineTo(0,r*.75);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.beginPath();ctx.moveTo(-r*.45,0);ctx.lineTo(0,-r*.35);ctx.lineTo(0,0);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
 }
 function drawStuck(list,cx,cy,R,theta,L,w){
   for(const k of list){
+    if(k.kind==='bolt')continue;
     const a=rad(k.a+theta);
     drawKnife(cx+Math.cos(a)*R*.72,cy+Math.sin(a)*R*.72,a-Math.PI/2,L,w*(k.wf||1),k.kind==='pre'?-1:(k.skin??skinIdx));
   }
@@ -397,7 +461,10 @@ function text(str,x,y,size,color,align='left',weight=700){
 
 function draw(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  const th=(mode==='menu'||mode==='skins'||!G.W)?WORLDS[0]:G.W;
+  const INK=th.dark?'#ffe9d6':C.ink, SOFT=th.dark?'rgba(255,233,214,.6)':C.soft, PALE=th.dark?'rgba(255,233,214,.2)':C.pale;
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
+  knifeInk=th.dark?'#ffe9d6':C.ink;
   const g=geo();
   let sx=0,sy=0;
   if(G.shake>0){const m=G.shake*28;sx=(Math.random()-.5)*m;sy=(Math.random()-.5)*m;}
@@ -413,7 +480,8 @@ function draw(){
   const showTarget=mode==='play'||mode==='dying';
   if(showTarget){
     drawStuck(G.stuck,g.cx,g.cy,g.R,G.theta,g.L,g.w);
-    drawTarget(g.cx,g.cy,g.R,G.theta,G.boss);
+    drawTarget(g.cx,g.cy,g.R,G.theta,G.boss,th);
+    drawRim(g.cx,g.cy,g.R,G.theta);
   }
   for(const p of G.pieces){
     if(p.type==='wedge')drawWedge(p);
@@ -430,7 +498,7 @@ function draw(){
       /* scope: dashed line to the target, plum if the throw lands, coral if it would crash */
       const bad=blocked(predictLanding());
       ctx.save();ctx.setLineDash([6,8]);ctx.lineWidth=3;ctx.lineCap='round';
-      ctx.strokeStyle=bad?C.coral:'rgba(61,44,79,.45)';
+      ctx.strokeStyle=bad?C.coral:(th.dark?'rgba(255,233,214,.5)':'rgba(61,44,79,.45)');
       ctx.beginPath();ctx.moveTo(g.cx,g.throwY-10);ctx.lineTo(g.cx,g.cy+g.R+8);ctx.stroke();ctx.restore();
     }
     drawKnife(g.cx,g.throwY,0,g.L,myW,skinIdx);
@@ -439,28 +507,39 @@ function draw(){
 
   /* ---- HUD ---- */
   const top=Math.max(20,safeTop);
-  text(String(G.score),22,top+46,52,C.ink);
-  text(G.boss?'boss':'stage',W-22,top+14,14,G.boss?C.coral:C.soft,'right',600);
+  text(String(G.score),22,top+46,52,INK);
+  text(G.boss?'boss':'stage',W-22,top+14,14,G.boss?C.coral:SOFT,'right',600);
   text(String(G.stage),W-22,top+40,26,C.coral,'right');
   /* stage dots: the last one of every 5 is the boss */
   const inGroup=(G.stage-1)%5;
   for(let i=0;i<5;i++){
     const x=W/2+(i-2)*20, y=top+30, boss=i===4;
-    ctx.fillStyle=i<inGroup?C.ink:i===inGroup?C.coral:C.pale;
+    ctx.fillStyle=i<inGroup?INK:i===inGroup?C.coral:PALE;
     ctx.beginPath();
     if(boss){ctx.save();ctx.translate(x,y);ctx.rotate(Math.PI/4);ctx.fillRect(-5.5,-5.5,11,11);ctx.restore();}
     else{ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();}
   }
   /* knives left, bottom-left */
   for(let i=0;i<G.needed;i++){
-    ctx.fillStyle=i<G.ammo?C.ink:C.pale;
+    ctx.fillStyle=i<G.ammo?INK:PALE;
     ctx.beginPath();ctx.arc(28,H-34-i*17,5,0,Math.PI*2);ctx.fill();
   }
   /* stage / boss title as it starts */
   if(G.intro>0&&mode==='play'){
     const a=Math.min(1,G.intro*2.5);
     ctx.globalAlpha=a;
-    text(G.boss?'boss fight!':'stage '+G.stage,W/2,g.cy+g.R+g.L+56,G.boss?40:34,G.boss?C.coral:C.ink,'center');
+    const ty=g.cy+g.R+g.L+56;
+    if(G.newWorld){
+      /* new world banner after beating a boss */
+      text('world '+th.num,W/2,ty-44,18,SOFT,'center',600);
+      text(th.name,W/2,ty,48,th.dark?C.coral:th.rings[0],'center');
+      text(th.twist,W/2,ty+30,17,INK,'center',600);
+    }else text(G.boss?'boss fight!':'stage '+G.stage,W/2,ty,G.boss?40:34,G.boss?C.coral:INK,'center');
+    ctx.globalAlpha=1;
+  }
+  for(const q of G.pops){
+    ctx.globalAlpha=Math.min(1,q.t*2.5);
+    text(q.txt,q.x,q.y,q.size||30,q.c,'center');
     ctx.globalAlpha=1;
   }
   /* crashes you can still survive (guardian / golden) */
@@ -548,6 +627,7 @@ const sfx={
   thunk(){tone(170,.12,'sine',.5,70);noise(.06,'bandpass',1400,.35,2);},
   clank(){tone(1650,.32,'triangle',.25);tone(2470,.25,'square',.06);noise(.12,'highpass',3000,.25);},
   crack(){noise(.32,'lowpass',900,.6);tone(110,.25,'sine',.4,50);},
+  ding(){tone(1320,.18,'triangle',.22);setTimeout(()=>tone(1980,.25,'sine',.16),60);},
   stage(){if(!ac||muted)return;[523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,.14,'triangle',.18),i*70));},
 };
 function buzz(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
